@@ -1,3 +1,29 @@
+class ProjectState {
+  private projects: any[] = [];
+  private listeners: any[] = [];
+
+  addNewProject(title: string, description: string, numOfPeople: number) {
+    const newProject = {
+      id: Date.now(),
+      title,
+      description,
+      people: numOfPeople,
+    };
+
+    this.projects.push(newProject);
+
+    for (const listenerFn of this.listeners) {
+      listenerFn(this.projects.slice());
+    }
+  }
+
+  addNewListener(listenerFn: Function) {
+    this.listeners.push(listenerFn);
+  }
+}
+
+const projectState = new ProjectState();
+
 interface Validatable {
   value: string | number;
   required?: boolean;
@@ -49,12 +75,14 @@ class ProjectList {
   templateElement: HTMLTemplateElement;
   hostElement: HTMLDivElement;
   element: HTMLElement;
+  projects: any[];
 
   constructor(private type: "active" | "finished") {
     this.templateElement = document.getElementById(
       "project-list"
     )! as HTMLTemplateElement;
     this.hostElement = document.getElementById("app")! as HTMLDivElement;
+    this.projects = [];
 
     const importedNode = document.importNode(
       this.templateElement.content,
@@ -64,14 +92,30 @@ class ProjectList {
     this.element = importedNode.firstElementChild as HTMLElement;
     this.element.id = `${this.type}-projects`;
 
+    projectState.addNewListener((projects: any[]) => {
+      this.projects = projects;
+      this.renderProjects();
+    });
+
     this.attach();
     this.renderContent();
+  }
+
+  private renderProjects() {
+    const listEl = document.querySelector(
+      `#${this.type}-projects-list`
+    )! as HTMLUListElement;
+    for (const prjItem of this.projects) {
+      const listItem = document.createElement("li");
+      listItem.textContent = prjItem.title;
+      listEl.appendChild(listItem);
+    }
   }
 
   private renderContent() {
     const listId = `${this.type}-projects-list`;
     this.element.querySelector("ul")!.id = listId;
-    this.element.querySelector("h2")!.textContent = 
+    this.element.querySelector("h2")!.textContent =
       this.type.toUpperCase() + " PROJECTS";
   }
 
@@ -161,7 +205,7 @@ class ProjectInput {
     const userInput = this.gatherUserInput();
     if (Array.isArray(userInput)) {
       const [title, description, people] = userInput;
-      console.log(title, description, people);
+      projectState.addNewProject(title, description, people);
       this.clearInputs();
     }
   }
@@ -176,5 +220,5 @@ class ProjectInput {
 }
 
 const prjInput = new ProjectInput();
-const activePrjList = new ProjectList('active');
-const finishedPrjList = new ProjectList('finished');
+const activePrjList = new ProjectList("active");
+const finishedPrjList = new ProjectList("finished");

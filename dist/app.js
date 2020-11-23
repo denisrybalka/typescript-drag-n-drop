@@ -5,6 +5,28 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
+class ProjectState {
+    constructor() {
+        this.projects = [];
+        this.listeners = [];
+    }
+    addNewProject(title, description, numOfPeople) {
+        const newProject = {
+            id: Date.now(),
+            title,
+            description,
+            people: numOfPeople,
+        };
+        this.projects.push(newProject);
+        for (const listenerFn of this.listeners) {
+            listenerFn(this.projects.slice());
+        }
+    }
+    addNewListener(listenerFn) {
+        this.listeners.push(listenerFn);
+    }
+}
+const projectState = new ProjectState();
 function validate(validatableInput) {
     let isValid = true;
     const { value, max, min, maxLength, minLength, required } = validatableInput;
@@ -41,11 +63,24 @@ class ProjectList {
         this.type = type;
         this.templateElement = document.getElementById("project-list");
         this.hostElement = document.getElementById("app");
+        this.projects = [];
         const importedNode = document.importNode(this.templateElement.content, true);
         this.element = importedNode.firstElementChild;
         this.element.id = `${this.type}-projects`;
+        projectState.addNewListener((projects) => {
+            this.projects = projects;
+            this.renderProjects();
+        });
         this.attach();
         this.renderContent();
+    }
+    renderProjects() {
+        const listEl = document.querySelector(`#${this.type}-projects-list`);
+        for (const prjItem of this.projects) {
+            const listItem = document.createElement("li");
+            listItem.textContent = prjItem.title;
+            listEl.appendChild(listItem);
+        }
     }
     renderContent() {
         const listId = `${this.type}-projects-list`;
@@ -107,7 +142,7 @@ class ProjectInput {
         const userInput = this.gatherUserInput();
         if (Array.isArray(userInput)) {
             const [title, description, people] = userInput;
-            console.log(title, description, people);
+            projectState.addNewProject(title, description, people);
             this.clearInputs();
         }
     }
@@ -122,5 +157,5 @@ __decorate([
     Autobind
 ], ProjectInput.prototype, "handleSubmit", null);
 const prjInput = new ProjectInput();
-const activePrjList = new ProjectList('active');
-const finishedPrjList = new ProjectList('finished');
+const activePrjList = new ProjectList("active");
+const finishedPrjList = new ProjectList("finished");
